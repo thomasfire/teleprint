@@ -1,10 +1,7 @@
 extern crate sha1;
 
 use std::io::Read;
-use std::fs::{File, read_dir};
-use std::path::Path;
-use std::io;
-use std::io::prelude::*;
+use std::fs::File;
 use self::sha1::Sha1;
 
 

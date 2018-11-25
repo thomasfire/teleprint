@@ -11,11 +11,17 @@ pub fn download_from_url(url: &str) -> Result<String, String> {
     };
 
     let mut content: Vec<u8> = Vec::new();
-    resp.read_to_end(&mut content);
+    match resp.read_to_end(&mut content) {
+        Ok(_) => println!("Downloaded file"),
+        Err(err) => return Err(format!("Error on downloading to file: {}", err))
+    };
     let hashsum = hash::hash_data(&content);
 
-    write_bytes_to_file(&format!("{}.pdf", hashsum), content);
+    match write_bytes_to_file(&format!("{}.pdf", hashsum), content) {
+        Ok(_) => Ok(format!("{}.pdf", hashsum)),
+        Err(err) => Err(format!("Error on writing to file: {}", err)),
+    }
 
-    Ok(format!("{}.pdf", hashsum))
+
 }
 

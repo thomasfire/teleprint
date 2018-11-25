@@ -6,7 +6,6 @@ authors = ["thomasfire <thomasfire@yandex.ru>"]
 [dependencies]
 telebot = { git = "https://github.com/bytesnake/telebot", branch = "master" }
 tokio-core = "0.1"
-failure = "0.1.3"
 futures = "0.1"
 toml = "0.4"
 serde_derive = "1.0.*"
