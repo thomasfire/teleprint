@@ -1,4 +1,5 @@
 extern crate futures;
+extern crate reqwest;
 extern crate telebot;
 extern crate tokio_core;
 
@@ -7,11 +8,25 @@ use database;
 use downloader;
 use printer;
 
+use self::futures::IntoFuture;
+//use self::reqwest;
 use self::futures::stream::Stream;
-use self::telebot::functions::*;
 use self::telebot::RcBot;
+use self::telebot::functions::*;
 use self::tokio_core::reactor::Core;
 
+#[derive(Debug, Deserialize)]
+struct FileJS {
+    file_id: String,
+    file_size: i64,
+    file_path: String,
+}
+
+#[derive(Debug, Deserialize)]
+struct ResultFile {
+    ok: bool,
+    result: FileJS,
+}
 
 fn cmd_auth(bot: &RcBot) {
     let handle = bot.new_cmd("/auth").and_then(|(bot, msg)| {
@@ -130,38 +145,6 @@ fn cmd_users(bot: &RcBot) {
     bot.register(handle);
 }
 
-fn cmd_from_file(bot: &RcBot) {
-    let handle = bot.unknown_cmd().and_then(|(bot, upd)| {
-        let users_table = database::read_users().unwrap();
-        let admin = users_table.get_admin() as i64;
-
-        let msg = upd;
-        let user_id = match msg.from {
-            Some(data) => data.id,
-            None => return bot.message(admin, "Some error with user_id".to_string()).send(),
-        };
-
-        if !users_table.check_user(user_id) {
-            return bot.message(user_id, "You don't have access to printer.".to_string()).send();
-        }
-
-        let file_id = match msg.document {
-            Some(data) => data.file_id,
-            None => return bot.message(user_id, "Error: no file or unknown command".to_string()).send(),
-        };
-
-        let filename = match downloader::download_from_url(&format!("https://api.telegram.org/file/bot/{}", file_id)) {
-            Ok(data) => data,
-            Err(err) => return bot.message(admin, format!("Error in downloading file: {:?}", err)).send(),
-        };
-
-        bot.message(admin, format!("User {} wants to print:\n{}", user_id, filename)).send()
-        // bot.message(admin, format!("{}", filename)).send()
-    });
-
-    bot.register(handle);
-}
-
 
 fn cmd_print(bot: &RcBot) {
     let handle = bot.new_cmd("/print").and_then(|(bot, msg)| {
@@ -224,8 +207,9 @@ fn cmd_files(bot: &RcBot) {
 
 
 fn cmd_get_file(bot: &RcBot) {
-    let handle = bot.new_cmd("/get_file").and_then(|(bot, msg)| {
+    let handle = bot.new_cmd("/getfile").and_then(|(bot, msg)| {
         let users_table = database::read_users().unwrap();
+        let token = read_config().unwrap().token;
         let admin = users_table.get_admin() as i64;
         let user_id = match msg.from {
             Some(data) => data.id,
@@ -241,23 +225,36 @@ fn cmd_get_file(bot: &RcBot) {
             None => return bot.message(admin, "No text error".to_string()).send(),
         };
 
-        let mut itr_filename = text.split_whitespace().take(1).filter_map(|x| x.parse::<String>().ok());
+        let mut itr_file_id = text.split_whitespace().take(1).filter_map(|x| x.parse::<String>().ok());
 
-        let filename = match itr_filename.next() {
+        let file_id = match itr_file_id.next() {
             Some(data) => data,
             None => return bot.message(admin, "No filename was specified. Error".to_string()).send()
         };
 
+        //bot.document(admin).file(filename.as_str()).send()
+        let mut url = reqwest::Url::parse(&format!("https://api.telegram.org/bot{}/sendDocument", token)).unwrap();
+        url.query_pairs_mut().append_pair("chat_id", format!("{}", admin).as_str())
+            .append_pair("document", file_id.as_str());
 
-        bot.document(admin).file(filename.as_str()).send();
+        let response = reqwest::get(url.as_str());
+        println!("{:?}", response);
+        let result = match response {
+            Ok(data) => data,
+            Err(err) => return bot.message(admin, format!("Error on sending file: {:?}", err)).send(),
+        };
+
+        println!("{:?}", result);
+
         bot.message(admin, format!("/|\\ Your file\n | ")).send()
     });
 
     bot.register(handle);
 }
 
+
 fn cmd_delete_file(bot: &RcBot) {
-    let handle = bot.new_cmd("/delete_file").and_then(|(bot, msg)| {
+    let handle = bot.new_cmd("/delfile").and_then(|(bot, msg)| {
         let users_table = database::read_users().unwrap();
         let admin = users_table.get_admin() as i64;
         let user_id = match msg.from {
@@ -347,6 +344,33 @@ fn cmd_cancel(bot: &RcBot) {
     bot.register(handle);
 }
 
+fn send_message(token: String, chat_id: i64, text: String) -> Result<(), String> {
+    let mut url = reqwest::Url::parse(&format!("https://api.telegram.org/bot{}/sendMessage", token)).unwrap();
+    url.query_pairs_mut().append_pair("chat_id", format!("{}", chat_id).as_str()).append_pair("text", text.as_str());
+    let response = reqwest::get(url.as_str());
+    println!("{:?}", response);
+    match response {
+        Ok(_) => Ok(()),
+        Err(err) => Err(format!("{:?}", err)),
+    }
+}
+
+fn get_link(token: &String, file_id: String) -> Result<String, String> {
+    let mut url = reqwest::Url::parse(&format!("https://api.telegram.org/bot{}/getFile", token)).unwrap();
+    url.query_pairs_mut().append_pair("file_id", file_id.as_str());
+    let response = reqwest::get(url.as_str());
+    println!("{:?}", response);
+    let mut result = match response {
+        Ok(res) => res,
+        Err(err) => return Err(format!("{:?}", err)),
+    };
+    let js_res = match result.json::<ResultFile>() {
+        Ok(data) => data,
+        Err(err) => return Err(format!("{:?}", err)),
+    };
+
+    Ok(js_res.result.file_path)
+}
 
 pub fn run_bot() {
     let mut lp = Core::new().unwrap();
@@ -356,7 +380,6 @@ pub fn run_bot() {
     cmd_auth(&bot);
     cmd_add_user(&bot);
     cmd_del_user(&bot);
-    cmd_from_file(&bot);
     cmd_print(&bot);
     cmd_users(&bot);
     cmd_files(&bot);
@@ -364,5 +387,65 @@ pub fn run_bot() {
     cmd_delete_file(&bot);
     cmd_lpstat(&bot);
     cmd_cancel(&bot);
+    // cmd_from_file(&bot);
+
+    let handle = (&bot).get_stream().and_then(|(bot, upd)| {
+        let users_table = database::read_users().unwrap();
+        let admin = users_table.get_admin() as i64;
+        let tg_token = read_config().unwrap().token;
+
+        let msg = match upd.message {
+            Some(data) => data,
+            None => return None,
+        };
+        let user_id = match msg.from {
+            Some(data) => data.id,
+            None => return Some(bot.message(admin, "Some error with user_id".to_string()).send()),
+        };
+
+        if !users_table.check_user(user_id) {
+            return Some(bot.message(user_id, "You don't have access to printer.".to_string()).send());
+        }
+
+        let file_id = match msg.document {
+            Some(data) => data.file_id,
+            None => return Some(bot.message(user_id, "Error: no file or unknown command".to_string()).send()),
+        };
+
+        let link = match get_link(&tg_token, file_id.clone()) {
+            Ok(data) => data,
+            Err(err) => {
+                eprintln!("Error on getting file path: {}", err);
+                return None;
+            }
+        };
+
+
+        let filename = match downloader::download_from_url(&format!("https://api.telegram.org/file/bot{}/{}", tg_token, link)) {
+            Ok(data) => data,
+            Err(err) => return Some(bot.message(admin, format!("Error in downloading file: {:?}", err)).send()),
+        };
+
+        match send_message(tg_token.clone(), admin, format!("User {} wants to print:\n{}", user_id, filename))  {
+            Ok(_) => println!("Ok"),
+            Err(err) => eprintln!("Error on sending message: {:?}", err),
+        };
+
+        match send_message(tg_token, admin, format!("{}", filename))  {
+            Ok(_) => println!("Ok"),
+            Err(err) => eprintln!("Error on sending message: {:?}", err),
+        };
+
+
+        Some(bot.message(admin, file_id).send())
+        // bot.message(admin, format!("{}", filename)).send()
+    });
+
+    match lp.run(handle.for_each(|_| Ok(())).into_future()) {
+        Ok(_) => println!("Ok"),
+        Err(err) => eprintln!("{:?}", err),
+    };
+    //bot.register(handle);
+
     bot.run(&mut lp).unwrap();
 }
