@@ -65,7 +65,7 @@ pub fn get_files() -> Result<String, String> {
     };
 
     let mut v_entries: Vec<String> = vec![];
-
+    v_entries.push("Files:".to_string());
     for entry in entries {
         match entry {
             Ok(data) => {

@@ -8,3 +8,4 @@ pub mod config;
 pub mod printer;
 pub mod hash;
 pub mod downloader;
+pub mod mailbot;

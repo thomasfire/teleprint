@@ -48,6 +48,12 @@ impl UsersTable {
     }
 }
 
+impl Clone for UsersTable {
+    fn clone(&self) -> UsersTable {
+        UsersTable { users: self.users.clone(), admin: self.admin.clone() }
+    }
+}
+
 fn hashify(data: Vec<i64>) -> HashSet<i64> {
     HashSet::from_iter(data.iter().cloned())
 }

@@ -3,6 +3,8 @@ extern crate reqwest;
 extern crate telebot;
 extern crate tokio_core;
 
+use std::sync::{Arc, Mutex};
+
 use config::read_config;
 use database;
 use downloader;
@@ -11,8 +13,8 @@ use printer;
 use self::futures::IntoFuture;
 //use self::reqwest;
 use self::futures::stream::Stream;
-use self::telebot::RcBot;
 use self::telebot::functions::*;
+use self::telebot::RcBot;
 use self::tokio_core::reactor::Core;
 
 #[derive(Debug, Deserialize)]
@@ -28,9 +30,9 @@ struct ResultFile {
     result: FileJS,
 }
 
-fn cmd_auth(bot: &RcBot) {
-    let handle = bot.new_cmd("/auth").and_then(|(bot, msg)| {
-        let users_table = database::read_users().unwrap();
+fn cmd_auth(bot: &RcBot, a_users_table: Arc<Mutex<database::UsersTable>>) {
+    let handle = bot.new_cmd("/auth").and_then(move |(bot, msg)| {
+        let users_table = a_users_table.lock().unwrap();
         let admin = users_table.get_admin() as i64;
         let user = match msg.from {
             Some(u) => u,
@@ -59,9 +61,10 @@ fn cmd_auth(bot: &RcBot) {
 }
 
 
-fn cmd_add_user(bot: &RcBot) {
-    let handle = bot.new_cmd("/adduser").and_then(|(bot, mut msg)| {
-        let admin = database::read_users().unwrap().get_admin() as i64;
+fn cmd_add_user(bot: &RcBot, a_users_table: Arc<Mutex<database::UsersTable>>) {
+    let handle = bot.new_cmd("/adduser").and_then(move |(bot, mut msg)| {
+        let mut users_table = a_users_table.lock().unwrap();
+        let admin = users_table.get_admin() as i64;
 
         let sender = match msg.from {
             Some(data) => data.id,
@@ -76,9 +79,9 @@ fn cmd_add_user(bot: &RcBot) {
             let mut user_id = text.split_whitespace().take(1).filter_map(|x| x.parse::<i64>().ok());
 
             if let Some(user) = user_id.next() {
-                let mut user_table = database::read_users().unwrap();
-                user_table.add_user(user);
-                match database::write_config(&user_table) {
+                //let mut user_table = &users_table;
+                users_table.add_user(user);
+                match database::write_config(&users_table) {
                     Ok(_) => return bot.message(admin, "Ok".to_string()).send(),
                     Err(err) => return bot.message(admin, format!("Error on writing config: {}", err)).send(),
                 };
@@ -91,9 +94,11 @@ fn cmd_add_user(bot: &RcBot) {
     bot.register(handle);
 }
 
-fn cmd_del_user(bot: &RcBot) {
-    let handle = bot.new_cmd("/deluser").and_then(|(bot, mut msg)| {
-        let admin = database::read_users().unwrap().get_admin() as i64;
+
+fn cmd_del_user(bot: &RcBot, a_users_table: Arc<Mutex<database::UsersTable>>) {
+    let handle = bot.new_cmd("/deluser").and_then(move |(bot, mut msg)| {
+        let mut users_table = a_users_table.lock().unwrap();
+        let admin = users_table.get_admin() as i64;
 
         let sender = match msg.from {
             Some(data) => data.id,
@@ -108,10 +113,10 @@ fn cmd_del_user(bot: &RcBot) {
             let mut user_id = text.split_whitespace().take(1).filter_map(|x| x.parse::<i64>().ok());
 
             if let Some(user) = user_id.next() {
-                let mut user_table = database::read_users().unwrap();
-                user_table.del_user(user);
+                //let mut user_table = database::read_users().unwrap();
+                users_table.del_user(user);
 
-                match database::write_config(&user_table) {
+                match database::write_config(&users_table) {
                     Ok(_) => return bot.message(admin, "Ok".to_string()).send(),
                     Err(err) => bot.message(admin, format!("Error on writing config: {}", err)).send(),
                 };
@@ -125,9 +130,9 @@ fn cmd_del_user(bot: &RcBot) {
 }
 
 
-fn cmd_users(bot: &RcBot) {
-    let handle = bot.new_cmd("/users").and_then(|(bot, msg)| {
-        let users_table = database::read_users().unwrap();
+fn cmd_users(bot: &RcBot, a_users_table: Arc<Mutex<database::UsersTable>>) {
+    let handle = bot.new_cmd("/users").and_then(move |(bot, msg)| {
+        let users_table = a_users_table.lock().unwrap();
         let admin = users_table.get_admin() as i64;
         let user_id = match msg.from {
             Some(data) => data.id,
@@ -146,9 +151,9 @@ fn cmd_users(bot: &RcBot) {
 }
 
 
-fn cmd_print(bot: &RcBot) {
-    let handle = bot.new_cmd("/print").and_then(|(bot, msg)| {
-        let users_table = database::read_users().unwrap();
+fn cmd_print(bot: &RcBot, a_users_table: Arc<Mutex<database::UsersTable>>) {
+    let handle = bot.new_cmd("/print").and_then(move |(bot, msg)| {
+        let users_table = a_users_table.lock().unwrap();
         let admin = users_table.get_admin() as i64;
         let user_id = match msg.from {
             Some(data) => data.id,
@@ -183,9 +188,9 @@ fn cmd_print(bot: &RcBot) {
 }
 
 
-fn cmd_files(bot: &RcBot) {
-    let handle = bot.new_cmd("/files").and_then(|(bot, msg)| {
-        let users_table = database::read_users().unwrap();
+fn cmd_files(bot: &RcBot, a_users_table: Arc<Mutex<database::UsersTable>>) {
+    let handle = bot.new_cmd("/files").and_then(move |(bot, msg)| {
+        let users_table = a_users_table.lock().unwrap();
         let admin = users_table.get_admin() as i64;
         let user_id = match msg.from {
             Some(data) => data.id,
@@ -206,10 +211,10 @@ fn cmd_files(bot: &RcBot) {
 }
 
 
-fn cmd_get_file(bot: &RcBot) {
-    let handle = bot.new_cmd("/getfile").and_then(|(bot, msg)| {
-        let users_table = database::read_users().unwrap();
-        let token = read_config().unwrap().token;
+fn cmd_get_file(bot: &RcBot, a_users_table: Arc<Mutex<database::UsersTable>>) {
+    let handle = bot.new_cmd("/getfile").and_then(move |(bot, msg)| {
+        let users_table = a_users_table.lock().unwrap();
+        let token = &bot.inner.key;
         let admin = users_table.get_admin() as i64;
         let user_id = match msg.from {
             Some(data) => data.id,
@@ -253,9 +258,9 @@ fn cmd_get_file(bot: &RcBot) {
 }
 
 
-fn cmd_delete_file(bot: &RcBot) {
-    let handle = bot.new_cmd("/delfile").and_then(|(bot, msg)| {
-        let users_table = database::read_users().unwrap();
+fn cmd_delete_file(bot: &RcBot, a_users_table: Arc<Mutex<database::UsersTable>>) {
+    let handle = bot.new_cmd("/delfile").and_then(move |(bot, msg)| {
+        let users_table = a_users_table.lock().unwrap();
         let admin = users_table.get_admin() as i64;
         let user_id = match msg.from {
             Some(data) => data.id,
@@ -289,9 +294,9 @@ fn cmd_delete_file(bot: &RcBot) {
 }
 
 
-fn cmd_lpstat(bot: &RcBot) {
-    let handle = bot.new_cmd("/lpstat").and_then(|(bot, msg)| {
-        let users_table = database::read_users().unwrap();
+fn cmd_lpstat(bot: &RcBot, a_users_table: Arc<Mutex<database::UsersTable>>) {
+    let handle = bot.new_cmd("/lpstat").and_then(move |(bot, msg)| {
+        let users_table = a_users_table.lock().unwrap();
         let admin = users_table.get_admin() as i64;
         let user_id = match msg.from {
             Some(data) => data.id,
@@ -309,9 +314,9 @@ fn cmd_lpstat(bot: &RcBot) {
 }
 
 
-fn cmd_cancel(bot: &RcBot) {
-    let handle = bot.new_cmd("/cancel").and_then(|(bot, msg)| {
-        let users_table = database::read_users().unwrap();
+fn cmd_cancel(bot: &RcBot, a_users_table: Arc<Mutex<database::UsersTable>>) {
+    let handle = bot.new_cmd("/cancel").and_then(move |(bot, msg)| {
+        let users_table = a_users_table.lock().unwrap();
         let admin = users_table.get_admin() as i64;
         let user_id = match msg.from {
             Some(data) => data.id,
@@ -344,6 +349,7 @@ fn cmd_cancel(bot: &RcBot) {
     bot.register(handle);
 }
 
+
 fn send_message(token: String, chat_id: i64, text: String) -> Result<(), String> {
     let mut url = reqwest::Url::parse(&format!("https://api.telegram.org/bot{}/sendMessage", token)).unwrap();
     url.query_pairs_mut().append_pair("chat_id", format!("{}", chat_id).as_str()).append_pair("text", text.as_str());
@@ -354,6 +360,7 @@ fn send_message(token: String, chat_id: i64, text: String) -> Result<(), String>
         Err(err) => Err(format!("{:?}", err)),
     }
 }
+
 
 fn get_link(token: &String, file_id: String) -> Result<String, String> {
     let mut url = reqwest::Url::parse(&format!("https://api.telegram.org/bot{}/getFile", token)).unwrap();
@@ -372,27 +379,29 @@ fn get_link(token: &String, file_id: String) -> Result<String, String> {
     Ok(js_res.result.file_path)
 }
 
+
 pub fn run_bot() {
     let mut lp = Core::new().unwrap();
     let config = read_config().unwrap();
     let bot: RcBot = RcBot::new(lp.handle(), &config.token).update_interval(1000);
+    let users_table: Arc<Mutex<database::UsersTable>> = Arc::new(Mutex::new(database::read_users().unwrap()));
 
-    cmd_auth(&bot);
-    cmd_add_user(&bot);
-    cmd_del_user(&bot);
-    cmd_print(&bot);
-    cmd_users(&bot);
-    cmd_files(&bot);
-    cmd_get_file(&bot);
-    cmd_delete_file(&bot);
-    cmd_lpstat(&bot);
-    cmd_cancel(&bot);
+    cmd_auth(&bot, Arc::clone(&users_table));
+    cmd_add_user(&bot, Arc::clone(&users_table));
+    cmd_del_user(&bot, Arc::clone(&users_table));
+    cmd_print(&bot, Arc::clone(&users_table));
+    cmd_users(&bot, Arc::clone(&users_table));
+    cmd_files(&bot, Arc::clone(&users_table));
+    cmd_get_file(&bot, Arc::clone(&users_table));
+    cmd_delete_file(&bot, Arc::clone(&users_table));
+    cmd_lpstat(&bot, Arc::clone(&users_table));
+    cmd_cancel(&bot, Arc::clone(&users_table));
     // cmd_from_file(&bot);
 
     let handle = (&bot).get_stream().and_then(|(bot, upd)| {
-        let users_table = database::read_users().unwrap();
-        let admin = users_table.get_admin() as i64;
-        let tg_token = read_config().unwrap().token;
+        let user_table = users_table.lock().unwrap();
+        let admin = user_table.get_admin() as i64;
+        let tg_token = &bot.inner.key;
 
         let msg = match upd.message {
             Some(data) => data,
@@ -403,7 +412,7 @@ pub fn run_bot() {
             None => return Some(bot.message(admin, "Some error with user_id".to_string()).send()),
         };
 
-        if !users_table.check_user(user_id) {
+        if !user_table.check_user(user_id) {
             return Some(bot.message(user_id, "You don't have access to printer.".to_string()).send());
         }
 
@@ -426,12 +435,12 @@ pub fn run_bot() {
             Err(err) => return Some(bot.message(admin, format!("Error in downloading file: {:?}", err)).send()),
         };
 
-        match send_message(tg_token.clone(), admin, format!("User {} wants to print:\n{}", user_id, filename))  {
+        match send_message(tg_token.clone(), admin, format!("User {} wants to print:\n{}", user_id, filename)) {
             Ok(_) => println!("Ok"),
             Err(err) => eprintln!("Error on sending message: {:?}", err),
         };
 
-        match send_message(tg_token, admin, format!("{}", filename))  {
+        match send_message(tg_token.to_string(), admin, format!("{}", filename)) {
             Ok(_) => println!("Ok"),
             Err(err) => eprintln!("Error on sending message: {:?}", err),
         };
