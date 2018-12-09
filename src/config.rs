@@ -1,17 +1,26 @@
 extern crate toml;
+
 use io_tools;
 use printer::get_printers;
 
+#[derive(Serialize, Deserialize, Clone)]
+pub struct IMAPConfig {
+    pub server: String,
+    pub port: u16,
+    pub user: String,
+    pub password: String,
+}
 
 /// config.toml must contain line
 ///
 /// ```toml
 /// token = "TELEGRAM_BOT_KEY"
 /// ```
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Clone)]
 pub struct Config {
     pub token: String,
     pub printer: String,
+    pub imap: IMAPConfig,
 }
 
 
@@ -37,7 +46,6 @@ pub fn read_config() -> Result<Config, String> {
 
     Ok(config)
 }
-
 
 
 /// Writes Config to the `config.toml`, returns Result
@@ -73,10 +81,25 @@ pub fn write_config(config: &Config) -> Result<(), String> {
 
 pub fn setup() {
     let m_token = io_tools::read_std_line("Enter Telegram API token: ");
+
     println!("\nHere is your printers:\n{}\n", get_printers());
     let m_printer = io_tools::read_std_line("Enter name of the printer: ");
 
-    match write_config(&Config {token: m_token, printer: m_printer}) {
+    let m_server = io_tools::read_std_line("Enter server: ");
+    let m_port = io_tools::read_std_line("Enter port: ").parse::<u16>().unwrap();
+    let m_user = io_tools::read_std_line("Enter user: ");
+    let m_password = io_tools::read_std_line("Enter password: ");
+
+    match write_config(&Config {
+        token: m_token,
+        printer: m_printer,
+        imap: IMAPConfig {
+            server: m_server,
+            port: m_port,
+            user: m_user,
+            password: m_password,
+        },
+    }) {
         Ok(_) => println!("Ok"),
         Err(err) => panic!("{:?}", err),
     };
