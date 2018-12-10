@@ -185,6 +185,20 @@ fn react(message: ProccessedMessage, a_config: Arc<Mutex<Config>>, a_users_table
     }
 }
 
+
+/// Runs IMAP bot
+///
+/// You should provide `Config` and `UsersTable` as shared state `Arc<Mutex>`
+///
+/// # Examples
+///
+/// ```rust
+/// let users_table = Arc::new(Mutex::new(read_users().unwrap()));
+/// let config = Arc::new(Mutex::new(read_config().unwrap()));
+/// let imap_bot = thread::spawn(move || {
+///        run_bot(Arc::clone(&config), Arc::clone(&users_table));
+///  });
+/// ```
 pub fn run_bot(config: Arc<Mutex<Config>>, users_table: Arc<Mutex<database::UsersTable>>) {
     let mut session = init(&config);
     println!("Session ok");

@@ -3,6 +3,7 @@ use std::process::Command;
 
 use config::read_config;
 
+/// Deletes file by filename
 pub fn delete_file(filename: &str) -> Result<String, String> {
     match remove_file(filename) {
         Ok(_) => return Ok("Ok".to_string()),
@@ -10,6 +11,8 @@ pub fn delete_file(filename: &str) -> Result<String, String> {
     }
 }
 
+
+/// Prints file by filename via lp (on *nix only)
 pub fn print_from_file(filename: &str) -> Result<String, String> {
     let config = match read_config() {
         Ok(data) => data,
@@ -25,7 +28,7 @@ pub fn print_from_file(filename: &str) -> Result<String, String> {
     Ok("Ok".to_string())
 }
 
-
+/// Returns output of the `$ lpstat` command
 pub fn lpstat() -> String {
     match Command::new("lpstat")
         .output() {
@@ -34,6 +37,8 @@ pub fn lpstat() -> String {
     }
 }
 
+
+/// Returns output of the `$ lpstat -p` command
 pub fn get_printers() -> String {
     match Command::new("lpstat").arg("-p")
         .output() {
@@ -42,7 +47,7 @@ pub fn get_printers() -> String {
     }
 }
 
-
+/// Cancels the job by its name or number
 pub fn cancel(job: &str) -> Result<String, String> {
     let output = match Command::new("cancel")
         .arg(job)
@@ -57,7 +62,7 @@ pub fn cancel(job: &str) -> Result<String, String> {
     return Err(format!("Error on cancel: {}", output));
 }
 
-
+/// Returns list of pdf files, ready for sending to the Telegram or email
 pub fn get_files() -> Result<String, String> {
     let entries = match read_dir(".") {
         Ok(data) => data,

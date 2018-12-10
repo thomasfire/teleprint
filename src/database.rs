@@ -5,13 +5,19 @@ use std::iter::FromIterator;
 
 use io_tools;
 
-#[derive(Serialize, Deserialize)]
+/// Structure, that contains admin ID, vector of users and vector of mail tokens.
+/// Usable with TOML
+#[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct Users {
     pub users: Vec<i64>,
     pub admin: i64,
     pub mail_tokens: Vec<String>,
 }
 
+
+/// Structure, that contains admin ID and HashSets of users and mail tokens.
+/// Usable on working with users/tokens.
+#[derive(Clone, Debug)]
 pub struct UsersTable {
     users: HashSet<i64>,
     admin: i64,
@@ -20,34 +26,95 @@ pub struct UsersTable {
 
 
 impl UsersTable {
+    /// Adds Telegram user
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// let mut users = read_users().unwrap();
+    /// users.add_user(123456);
+    /// ```
     pub fn add_user(&mut self, user_id: i64) {
         self.users.insert(user_id);
     }
 
+    /// Deletes Telegram user
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// let mut users = read_users().unwrap();
+    /// users.del_user(123456);
+    /// ```
     pub fn del_user(&mut self, user_id: i64) {
         self.users.remove(&user_id);
     }
 
+    /// Adds IMAP token
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// let mut users = read_users();
+    /// users.add_token("tokenONE".to_string());
+    /// ```
     pub fn add_token(&mut self, token: String) {
         self.mail_tokens.insert(token);
     }
 
+    /// Deletes IMAP token
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// let mut users = read_users();
+    /// users.del_token("tokenONE".to_string());
+    /// ```
     pub fn del_token(&mut self, token: String) {
         self.mail_tokens.remove(&token);
     }
 
+    /// Checks whether the Telegram user is authorized
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// let mut users = read_users().unwrap();
+    /// users.add_user(123456);
+    /// let accessed = users.check_user(123456); // true
+    /// ```
     pub fn check_user(&self, user_id: i64) -> bool {
         self.users.contains(&user_id)
     }
 
+
+    /// Checks whether the IMAP token is authorized
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// let mut users = read_users().unwrap();
+    /// users.add_token("tokenONE".to_string());
+    /// let accessed = users.check_token("tokenONE".to_string()); // true
+    /// ```
     pub fn check_token(&self, token: String) -> bool {
         self.mail_tokens.contains(&token)
     }
 
+    /// Sets admin ID (Telegram)
     pub fn set_admin(&mut self, admin_id: i64) {
         self.admin = admin_id;
     }
 
+    /// Converts UsersTable to Users with vectors instead of HashSets
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// let users = read_users().unwrap();
+    /// println!("{:?}", users); // You will see HashSets
+    /// println!("{:?}", users.vectorize()); // You will see vectors, usable for TOML
+    /// ```
     pub fn vectorize(&self) -> Users {
         let mut users = Users { users: vec![], admin: self.admin, mail_tokens: vec![] };
         for user in &self.users {
@@ -61,20 +128,12 @@ impl UsersTable {
         users
     }
 
+    /// Returns admin ID
     pub fn get_admin(&self) -> i64 {
         self.admin
     }
 }
 
-impl Clone for UsersTable {
-    fn clone(&self) -> UsersTable {
-        UsersTable {
-            users: self.users.clone(),
-            admin: self.admin.clone(),
-            mail_tokens: self.mail_tokens.clone(),
-        }
-    }
-}
 
 fn hashify<T>(data: Vec<T>) -> HashSet<T> where T: std::hash::Hash + std::clone::Clone + std::cmp::Eq {
     HashSet::from_iter(data.iter().cloned())
@@ -122,7 +181,8 @@ pub fn read_users() -> Result<UsersTable, String> {
 /// ```rust
 /// let users = Users {
 ///     users: [45454. 911],
-///     admin: 1000
+///     admin: 1000,
+///     mail_tokens: ["tokenONE", "sfs66fsdf"]
 /// };
 /// write_config(users).unwrap();
 /// ```

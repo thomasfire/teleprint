@@ -459,6 +459,15 @@ fn cmd_cancel(bot: &RcBot, a_users_table: Arc<Mutex<database::UsersTable>>) {
 }
 
 
+/// Sends message
+///
+/// Needs Telegram Bot API token, chat_id and text
+///
+/// # Example
+///
+/// ```rust
+/// send_message(&bot_token, admin, &format!("Mail user {} wants to print:", user_token)).unwrap();
+/// ```
 pub fn send_message(token: &String, chat_id: i64, text: &String) -> Result<(), String> {
     let mut url = reqwest::Url::parse(&format!("https://api.telegram.org/bot{}/sendMessage", token)).unwrap();
     url.query_pairs_mut().append_pair("chat_id", format!("{}", chat_id).as_str()).append_pair("text", text.as_str());
@@ -470,7 +479,15 @@ pub fn send_message(token: &String, chat_id: i64, text: &String) -> Result<(), S
     }
 }
 
-
+/// Sends message
+///
+/// Needs Telegram Bot API token, chat_id and filename
+///
+/// # Example
+///
+/// ```rust
+/// send_document(&bot_token, admin, &format!("{}", filename)).unwrap();
+/// ```
 pub fn send_document(token: &String, chat_id: i64, filename: &String) -> Result<(), String> {
     let mut url = reqwest::Url::parse(&format!("https://api.telegram.org/bot{}/sendDocument", token)).unwrap();
     //let file = File::open(filename).unwrap();
@@ -509,25 +526,38 @@ fn get_link(token: &String, file_id: String) -> Result<String, String> {
 }
 
 
+/// Runs Telegram bot
+///
+/// You should provide Config and UsersTable as shared state `Arc<Mutex>`
+///
+/// # Examples
+///
+/// ```rust
+/// let users_table = Arc::new(Mutex::new(read_users().unwrap()));
+/// let config = Arc::new(Mutex::new(read_config().unwrap()));
+/// let tele_bot = thread::spawn(move || {
+///        run_bot(Arc::clone(&config), Arc::clone(&users_table));
+///  });
+/// ```
 pub fn run_bot(a_config: Arc<Mutex<config::Config>>, a_users_table: Arc<Mutex<database::UsersTable>>) {
     let mut lp = Core::new().unwrap();
     let config = { a_config.lock().unwrap().clone() };
     let bot: RcBot = RcBot::new(lp.handle(), &config.token).update_interval(1000);
 
-    cmd_auth(&bot, Arc::clone(&a_users_table));
-    cmd_add_user(&bot, Arc::clone(&a_users_table));
-    cmd_add_token(&bot, Arc::clone(&a_users_table));
-    cmd_gen_token(&bot, Arc::clone(&a_users_table));
-    cmd_del_user(&bot, Arc::clone(&a_users_table));
-    cmd_del_token(&bot, Arc::clone(&a_users_table));
-    cmd_print(&bot, Arc::clone(&a_users_table));
-    cmd_users(&bot, Arc::clone(&a_users_table));
-    cmd_tokens(&bot, Arc::clone(&a_users_table));
-    cmd_files(&bot, Arc::clone(&a_users_table));
-    cmd_get_file(&bot, Arc::clone(&a_users_table));
-    cmd_delete_file(&bot, Arc::clone(&a_users_table));
-    cmd_lpstat(&bot, Arc::clone(&a_users_table));
-    cmd_cancel(&bot, Arc::clone(&a_users_table));
+    cmd_auth(&bot, Arc::clone(&a_users_table)); //          /auth
+    cmd_add_user(&bot, Arc::clone(&a_users_table)); //      /adduser
+    cmd_add_token(&bot, Arc::clone(&a_users_table)); //     /addtoken
+    cmd_gen_token(&bot, Arc::clone(&a_users_table)); //     /gentoken
+    cmd_del_user(&bot, Arc::clone(&a_users_table)); //      /deluser
+    cmd_del_token(&bot, Arc::clone(&a_users_table)); //     /deltoken
+    cmd_print(&bot, Arc::clone(&a_users_table)); //         /print
+    cmd_users(&bot, Arc::clone(&a_users_table)); //         /users
+    cmd_tokens(&bot, Arc::clone(&a_users_table)); //        /tokens
+    cmd_files(&bot, Arc::clone(&a_users_table)); //         /files
+    cmd_get_file(&bot, Arc::clone(&a_users_table)); //      /getfile
+    cmd_delete_file(&bot, Arc::clone(&a_users_table)); //   /delfile
+    cmd_lpstat(&bot, Arc::clone(&a_users_table)); //        /lpstat
+    cmd_cancel(&bot, Arc::clone(&a_users_table)); //        /cancel
     // cmd_from_file(&bot);
 
     let handle = (&bot).get_stream().and_then(|(bot, upd)| {

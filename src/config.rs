@@ -3,6 +3,8 @@ extern crate toml;
 use io_tools;
 use printer::get_printers;
 
+
+/// Structure, that contains necessary information for getting connected and logged in on IMAP Server
 #[derive(Serialize, Deserialize, Clone)]
 pub struct IMAPConfig {
     pub server: String,
@@ -11,11 +13,7 @@ pub struct IMAPConfig {
     pub password: String,
 }
 
-/// config.toml must contain line
-///
-/// ```toml
-/// token = "TELEGRAM_BOT_KEY"
-/// ```
+/// Structure, that contains necessary information for getting access to the Telegram and IMAP
 #[derive(Serialize, Deserialize, Clone)]
 pub struct Config {
     pub token: String,
@@ -78,7 +76,7 @@ pub fn write_config(config: &Config) -> Result<(), String> {
     };
 }
 
-
+/// Setups your Telegram/IMAP bots by command prompt
 pub fn setup() {
     let m_token = io_tools::read_std_line("Enter Telegram API token: ");
 
