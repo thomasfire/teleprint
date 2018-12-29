@@ -2,7 +2,6 @@
 <project version="4">
   <component name="ChangeListManager">
     <list default="true" id="bc313212-0032-4033-8960-595ce3fd9d19" name="Default Changelist" comment="">
-      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/bot.rs" beforeDir="false" afterPath="$PROJECT_DIR$/src/bot.rs" afterDir="false" />
     </list>
     <ignored path="$PROJECT_DIR$/target/" />
@@ -45,7 +44,7 @@
       <file pinned="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/src/mailbot.rs">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="1389">
+            <state relative-caret-position="2850">
               <caret line="190" column="48" selection-start-line="190" selection-start-column="48" selection-end-line="190" selection-end-column="48" />
             </state>
           </provider>
@@ -63,8 +62,8 @@
       <file pinned="false" current-in-tab="true">
         <entry file="file://$PROJECT_DIR$/src/bot.rs">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="-1951">
-              <caret line="36" column="66" selection-start-line="36" selection-start-column="66" selection-end-line="36" selection-end-column="66" />
+            <state relative-caret-position="206">
+              <caret line="563" column="63" selection-start-line="563" selection-start-column="63" selection-end-line="563" selection-end-column="63" />
               <folding>
                 <element signature="n#!!block;n#cmd_lpstat#0" />
                 <element signature="n#!!block;n#cmd_cancel#0" />
@@ -186,8 +185,8 @@
           <select />
         </subPane>
       </pane>
-      <pane id="Scope" />
       <pane id="PackagesPane" />
+      <pane id="Scope" />
     </panes>
   </component>
   <component name="PropertiesComponent">
@@ -219,8 +218,9 @@
   </component>
   <component name="ToolWindowManager">
     <frame x="0" y="27" width="1920" height="1020" extended-state="6" />
+    <editor active="true" />
     <layout>
-      <window_info content_ui="combo" id="Project" order="0" visible="true" weight="0.11431624" />
+      <window_info content_ui="combo" id="Project" order="0" visible="true" weight="0.115384616" />
       <window_info id="Structure" order="1" side_tool="true" weight="0.25" />
       <window_info id="Designer" order="2" />
       <window_info id="Favorites" order="3" side_tool="true" />
@@ -293,6 +293,20 @@
         </state>
       </provider>
     </entry>
+    <entry file="file://$PROJECT_DIR$/src/mailbot.rs">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="2850">
+          <caret line="190" column="48" selection-start-line="190" selection-start-column="48" selection-end-line="190" selection-end-column="48" />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/Cargo.toml">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="255">
+          <caret line="17" column="14" selection-start-line="17" selection-start-column="14" selection-end-line="17" selection-end-column="14" />
+        </state>
+      </provider>
+    </entry>
     <entry file="file://$PROJECT_DIR$/src/printer.rs">
       <provider selected="true" editor-type-id="text-editor">
         <state relative-caret-position="960">
@@ -321,24 +335,10 @@
         </state>
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/Cargo.toml">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="255">
-          <caret line="17" column="14" selection-start-line="17" selection-start-column="14" selection-end-line="17" selection-end-column="14" />
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/src/mailbot.rs">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="1389">
-          <caret line="190" column="48" selection-start-line="190" selection-start-column="48" selection-end-line="190" selection-end-column="48" />
-        </state>
-      </provider>
-    </entry>
     <entry file="file://$PROJECT_DIR$/src/bot.rs">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="-1951">
-          <caret line="36" column="66" selection-start-line="36" selection-start-column="66" selection-end-line="36" selection-end-column="66" />
+        <state relative-caret-position="206">
+          <caret line="563" column="63" selection-start-line="563" selection-start-column="63" selection-end-line="563" selection-end-column="63" />
           <folding>
             <element signature="n#!!block;n#cmd_lpstat#0" />
             <element signature="n#!!block;n#cmd_cancel#0" />

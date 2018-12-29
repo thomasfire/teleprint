@@ -34,7 +34,7 @@ struct ResultFile {
 
 fn cmd_auth(bot: &RcBot, a_users_table: Arc<Mutex<database::UsersTable>>) {
     let handle = bot.new_cmd("/auth").and_then(move |(bot, msg)| {
-        let users_table = {a_users_table.lock().unwrap().clone()};
+        let users_table = { a_users_table.lock().unwrap().clone() };
         let admin = users_table.get_admin() as i64;
         let user = match msg.from {
             Some(u) => u,
@@ -131,7 +131,7 @@ fn cmd_add_token(bot: &RcBot, a_users_table: Arc<Mutex<database::UsersTable>>) {
 
 fn cmd_gen_token(bot: &RcBot, a_users_table: Arc<Mutex<database::UsersTable>>) {
     let handle = bot.new_cmd("/gentoken").and_then(move |(bot, mut msg)| {
-        let users_table = {a_users_table.lock().unwrap().clone()};
+        let users_table = { a_users_table.lock().unwrap().clone() };
         let admin = users_table.get_admin() as i64;
 
         let sender = match msg.from {
@@ -229,7 +229,7 @@ fn cmd_del_user(bot: &RcBot, a_users_table: Arc<Mutex<database::UsersTable>>) {
 
 fn cmd_users(bot: &RcBot, a_users_table: Arc<Mutex<database::UsersTable>>) {
     let handle = bot.new_cmd("/users").and_then(move |(bot, msg)| {
-        let users_table = {a_users_table.lock().unwrap().clone()};
+        let users_table = { a_users_table.lock().unwrap().clone() };
         let admin = users_table.get_admin() as i64;
         let user_id = match msg.from {
             Some(data) => data.id,
@@ -250,7 +250,7 @@ fn cmd_users(bot: &RcBot, a_users_table: Arc<Mutex<database::UsersTable>>) {
 
 fn cmd_tokens(bot: &RcBot, a_users_table: Arc<Mutex<database::UsersTable>>) {
     let handle = bot.new_cmd("/tokens").and_then(move |(bot, msg)| {
-        let users_table = {a_users_table.lock().unwrap().clone()};
+        let users_table = { a_users_table.lock().unwrap().clone() };
         let admin = users_table.get_admin() as i64;
         let user_id = match msg.from {
             Some(data) => data.id,
@@ -271,7 +271,7 @@ fn cmd_tokens(bot: &RcBot, a_users_table: Arc<Mutex<database::UsersTable>>) {
 
 fn cmd_print(bot: &RcBot, a_users_table: Arc<Mutex<database::UsersTable>>) {
     let handle = bot.new_cmd("/print").and_then(move |(bot, msg)| {
-        let users_table = {a_users_table.lock().unwrap().clone()};
+        let users_table = { a_users_table.lock().unwrap().clone() };
         let admin = users_table.get_admin() as i64;
         let user_id = match msg.from {
             Some(data) => data.id,
@@ -308,7 +308,7 @@ fn cmd_print(bot: &RcBot, a_users_table: Arc<Mutex<database::UsersTable>>) {
 
 fn cmd_files(bot: &RcBot, a_users_table: Arc<Mutex<database::UsersTable>>) {
     let handle = bot.new_cmd("/files").and_then(move |(bot, msg)| {
-        let users_table = {a_users_table.lock().unwrap().clone()};
+        let users_table = { a_users_table.lock().unwrap().clone() };
         let admin = users_table.get_admin() as i64;
         let user_id = match msg.from {
             Some(data) => data.id,
@@ -331,7 +331,7 @@ fn cmd_files(bot: &RcBot, a_users_table: Arc<Mutex<database::UsersTable>>) {
 
 fn cmd_get_file(bot: &RcBot, a_users_table: Arc<Mutex<database::UsersTable>>) {
     let handle = bot.new_cmd("/getfile").and_then(move |(bot, msg)| {
-        let users_table = {a_users_table.lock().unwrap().clone()};
+        let users_table = { a_users_table.lock().unwrap().clone() };
         let token = &bot.inner.key;
         let admin = users_table.get_admin() as i64;
         let user_id = match msg.from {
@@ -369,7 +369,7 @@ fn cmd_get_file(bot: &RcBot, a_users_table: Arc<Mutex<database::UsersTable>>) {
 
 fn cmd_delete_file(bot: &RcBot, a_users_table: Arc<Mutex<database::UsersTable>>) {
     let handle = bot.new_cmd("/delfile").and_then(move |(bot, msg)| {
-        let users_table = {a_users_table.lock().unwrap().clone()};
+        let users_table = { a_users_table.lock().unwrap().clone() };
         let admin = users_table.get_admin() as i64;
         let user_id = match msg.from {
             Some(data) => data.id,
@@ -561,7 +561,7 @@ pub fn run_bot(a_config: Arc<Mutex<config::Config>>, a_users_table: Arc<Mutex<da
     // cmd_from_file(&bot);
 
     let handle = (&bot).get_stream().and_then(|(bot, upd)| {
-        let user_table = a_users_table.lock().unwrap();
+        let user_table = { a_users_table.lock().unwrap().clone() };
         let admin = user_table.get_admin() as i64;
         let tg_token = &bot.inner.key;
 
