@@ -1,8 +1,8 @@
 extern crate toml;
 
+use database::{init_db};
 use io_tools;
 use printer::get_printers;
-
 
 /// Structure, that contains necessary information for getting connected and logged in on IMAP Server
 #[derive(Serialize, Deserialize, Clone)]
@@ -55,7 +55,7 @@ pub fn read_config() -> Result<Config, String> {
 ///     token: String::from("ava24efsef345"),
 ///     printer: String::from("Your-Printer"),
 /// };
-/// write_config(config).unwrap();
+/// write_database(config).unwrap();
 /// ```
 pub fn write_config(config: &Config) -> Result<(), String> {
     let conf_str = match toml::to_string(config) {
@@ -98,6 +98,12 @@ pub fn setup() {
             password: m_password,
         },
     }) {
+        Ok(_) => println!("Ok"),
+        Err(err) => panic!("{:?}", err),
+    };
+
+    let m_admin = io_tools::read_std_line("Enter admin Telegram ID : ").parse::<i64>().unwrap();
+    match init_db(m_admin) {
         Ok(_) => println!("Ok"),
         Err(err) => panic!("{:?}", err),
     };

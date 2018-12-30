@@ -37,14 +37,20 @@ fn vectorize(data: Option<&[u8]>) -> Option<Vec<u8>> {
     }
 }
 
-fn get_latest(session: &mut imap::Session<TlsStream<TcpStream>>) -> Vec<Message> {
+fn get_latest(session: &mut imap::Session<TlsStream<TcpStream>>) -> Result<Vec<Message>, String> {
     let mut messages: Vec<Message> = vec![];
-    session.select("INBOX").unwrap();
+    match session.select("INBOX") {
+        Ok(_) => (),
+        Err(err) => {
+            eprintln!("Error on selecting INBOX{:?}", err);
+            return Err(format!("{:?}", err));
+        }
+    };
     let news = match session.search("UNSEEN") {
         Ok(data) => data,
         Err(err) => {
             eprintln!("Error on getting latest messages: {:?}", err);
-            return messages;
+            return Err(format!("{:?}", err));
         }
     };
 
@@ -66,7 +72,7 @@ fn get_latest(session: &mut imap::Session<TlsStream<TcpStream>>) -> Vec<Message>
             match session.store(format!("{}", x), "+FLAGS.SILENT (\\Seen)") {
                 Ok(_) => print!(""),
                 Err(err) => {
-                    println!("Error on marking as seen: {}", err);
+                    eprintln!("Error on marking as seen: {}", err);
                     messages.pop();
                 }
             };
@@ -74,21 +80,38 @@ fn get_latest(session: &mut imap::Session<TlsStream<TcpStream>>) -> Vec<Message>
     }
 
 
-    messages
+    Ok(messages)
 }
 
-fn init(a_config: &Arc<Mutex<Config>>) -> imap::Session<TlsStream<TcpStream>> {
+fn init(a_config: &Arc<Mutex<Config>>) -> Result<imap::Session<TlsStream<TcpStream>>, String> {
     let config = { a_config.lock().unwrap().clone() };
     let (server, port, user, password) = (config.imap.server.clone(), config.imap.port,
                                           config.imap.user.clone(), config.imap.password.clone());
 
-    let tls = TlsConnector::builder().build().unwrap();
-    let client = imap::connect((server.as_str(), port),
-                               server.as_str(), &tls).unwrap();
-    let mut imap_session = client.login(&user,
-                                        &password).unwrap();
-    imap_session.select("INBOX").unwrap();
-    return imap_session;
+    let tls = match TlsConnector::builder().build() {
+        Ok(data) => data,
+        Err(err) => {
+            eprintln!("Tls error: {:?}", err);
+            return Err(format!("{:?}", err));
+        }
+    };
+
+    let client = match imap::connect((server.as_str(), port),
+                                     server.as_str(), &tls) {
+        Ok(data) => data,
+        Err(err) => {
+            eprintln!("IMAP connection error: {:?}", err);
+            return Err(format!("{:?}", err));
+        }
+    };
+
+    match client.login(&user, &password) {
+        Ok(data) => Ok(data),
+        Err(err) => {
+            eprintln!("IMAP session error: {:?}", err);
+            return Err(format!("{:?}", err));
+        }
+    }
 }
 
 
@@ -200,11 +223,23 @@ fn react(message: ProccessedMessage, a_config: Arc<Mutex<Config>>, a_users_table
 ///  });
 /// ```
 pub fn run_bot(config: Arc<Mutex<Config>>, users_table: Arc<Mutex<database::UsersTable>>) {
-    let mut session = init(&config);
+    let mut session = match init(&config) {
+        Ok(data) => data,
+        Err(err) => {
+            eprintln!("IMAP init error: {:?}", err);
+            return;
+        }
+    };
     println!("Session ok");
 
     loop {
-        let buff = get_latest(&mut session);
+        let buff = match get_latest(&mut session) {
+            Ok(data) => data,
+            Err(err) => {
+                eprintln!("Get latest error: {:?}", err);
+                continue;
+            }
+        };
         for x in buff {
             let parsed = match x.body {
                 Some(data) => {

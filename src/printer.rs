@@ -78,7 +78,7 @@ pub fn get_files() -> Result<String, String> {
                     Some(path) => String::from(path.to_string_lossy()),
                     None => "".to_string()
                 } == "pdf".to_string() {
-                    v_entries.push(String::from(data.file_name().to_str().unwrap()));
+                    v_entries.push(String::from(data.file_name().to_string_lossy()));
                 }
             }
             Err(_) => continue,

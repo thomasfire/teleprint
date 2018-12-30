@@ -150,17 +150,20 @@ fn hashify<T>(data: Vec<T>) -> HashSet<T> where T: std::hash::Hash + std::clone:
 pub fn read_users() -> Result<UsersTable, String> {
     if !io_tools::exists("users.toml") {
         println!("No `users.toml` file, creating it...");
-        write_config(&UsersTable {
+        match write_database(&UsersTable {
             users: hashify(vec![]),
             admin: 0,
             mail_tokens: hashify(vec![]),
-        }).unwrap();
+        }) {
+            Ok(_) => (),
+            Err(err) => return Err(format!("{:?}", err)),
+        };
     }
     let users_str = io_tools::read_str("users.toml");
     let users: Users = match toml::from_str(&users_str) {
         Ok(value) => value,
         Err(err) => {
-            println!("Something goes wrong while reading the users: {}", err);
+            eprintln!("Something goes wrong while reading the users: {}", err);
             return Err(format!("{:?}", err));
         }
     };
@@ -174,6 +177,24 @@ pub fn read_users() -> Result<UsersTable, String> {
 }
 
 
+/// Inits the database
+///
+/// # Examples
+///
+/// ```rust
+/// init_db(6587158 as i64).unwrap();
+/// ```
+pub fn init_db(m_admin: i64) -> Result<(), String> {
+    match write_database(&UsersTable {
+        users: hashify(vec![m_admin]),
+        admin: m_admin,
+        mail_tokens: hashify(vec![]),
+    }) {
+        Ok(_) => Ok(()),
+        Err(err) => return Err(format!("{:?}", err)),
+    }
+}
+
 /// Writes Config to the `users.toml`, returns Result
 ///
 /// # Examples
@@ -184,9 +205,9 @@ pub fn read_users() -> Result<UsersTable, String> {
 ///     admin: 1000,
 ///     mail_tokens: ["tokenONE", "sfs66fsdf"]
 /// };
-/// write_config(users).unwrap();
+/// write_database(users).unwrap();
 /// ```
-pub fn write_config(users: &UsersTable) -> Result<(), String> {
+pub fn write_database(users: &UsersTable) -> Result<(), String> {
     let users_str = match toml::to_string(&users.vectorize()) {
         Ok(value) => value,
         Err(err) => {

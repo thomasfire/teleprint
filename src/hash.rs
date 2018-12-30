@@ -7,11 +7,22 @@ use std::io::Read;
 use self::rand::prelude::*;
 use self::sha1::Sha1;
 
-fn read_bytes(filename: &str) -> Vec<u8> {
-    let mut f = File::open(filename).unwrap();
+fn read_bytes(filename: &str) -> Result<Vec<u8>, String> {
+    let mut f = match File::open(filename) {
+        Ok(data) => data,
+        Err(err) => {
+            eprintln!("{:?}", err);
+            return Err(format!("{:?}", err));
+        }
+    };
     let mut buffer: Vec<u8> = vec![];
-    f.read_to_end(&mut buffer).expect("Couldn`t read to string");
-    buffer
+    match f.read_to_end(&mut buffer) {
+        Ok(_) => Ok(buffer),
+        Err(err) => {
+            eprintln!("{:?}", err);
+            return Err(format!("{:?}", err));
+        }
+    }
 }
 
 /// Computes SHA1 HEX digest of the file
@@ -21,11 +32,17 @@ fn read_bytes(filename: &str) -> Vec<u8> {
 /// ```rust
 /// let digest = hash_file("filetoprint.pdf"); // <SHA1 hexadecimal digest>
 /// ```
-pub fn hash_file(filename: &str) -> String {
-    let mybytes = read_bytes(&filename);
+pub fn hash_file(filename: &str) -> Result<String, String> {
+    let mybytes = match read_bytes(&filename) {
+        Ok(data) => data,
+        Err(err) => {
+            eprintln!("{:?}", err);
+            return Err(format!("{:?}", err));
+        }
+    };
     let mut hasher = Sha1::new();
     hasher.update(&mybytes);
-    hasher.digest().to_string()
+    Ok(hasher.digest().to_string())
 }
 
 /// Computes SHA1 HEX digest of the bytes you provide

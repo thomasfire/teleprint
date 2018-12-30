@@ -70,6 +70,7 @@ Use the commands below to manage users, tokens, files and printer:
 * `/delfile <filename>` - delete file
 * `/lpstat` - see lpstat output
 * `/cancel <job ID or name>` - cancel the job
+* `/help` - print the list of commands above
 
 ### Sending and printing files
 

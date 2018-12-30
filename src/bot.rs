@@ -83,7 +83,7 @@ fn cmd_add_user(bot: &RcBot, a_users_table: Arc<Mutex<database::UsersTable>>) {
             if let Some(user) = user_id.next() {
                 //let mut user_table = &users_table;
                 users_table.add_user(user);
-                match database::write_config(&users_table) {
+                match database::write_database(&users_table) {
                     Ok(_) => return bot.message(admin, "Ok".to_string()).send(),
                     Err(err) => return bot.message(admin, format!("Error on writing config: {}", err)).send(),
                 };
@@ -116,7 +116,7 @@ fn cmd_add_token(bot: &RcBot, a_users_table: Arc<Mutex<database::UsersTable>>) {
             if let Some(token) = token_id.next() {
                 //let mut user_table = &users_table;
                 users_table.add_token(token);
-                match database::write_config(&users_table) {
+                match database::write_database(&users_table) {
                     Ok(_) => return bot.message(admin, "Ok".to_string()).send(),
                     Err(err) => return bot.message(admin, format!("Error on writing config: {}", err)).send(),
                 };
@@ -178,7 +178,7 @@ fn cmd_del_token(bot: &RcBot, a_users_table: Arc<Mutex<database::UsersTable>>) {
             if let Some(token) = token_id.next() {
                 //let mut user_table = &users_table;
                 users_table.del_token(token);
-                match database::write_config(&users_table) {
+                match database::write_database(&users_table) {
                     Ok(_) => return bot.message(admin, "Ok".to_string()).send(),
                     Err(err) => return bot.message(admin, format!("Error on writing config: {}", err)).send(),
                 };
@@ -210,10 +210,9 @@ fn cmd_del_user(bot: &RcBot, a_users_table: Arc<Mutex<database::UsersTable>>) {
             let mut user_id = text.split_whitespace().take(1).filter_map(|x| x.parse::<i64>().ok());
 
             if let Some(user) = user_id.next() {
-                //let mut user_table = database::read_users().unwrap();
                 users_table.del_user(user);
 
-                match database::write_config(&users_table) {
+                match database::write_database(&users_table) {
                     Ok(_) => return bot.message(admin, "Ok".to_string()).send(),
                     Err(err) => bot.message(admin, format!("Error on writing config: {}", err)).send(),
                 };
@@ -405,7 +404,7 @@ fn cmd_delete_file(bot: &RcBot, a_users_table: Arc<Mutex<database::UsersTable>>)
 
 fn cmd_lpstat(bot: &RcBot, a_users_table: Arc<Mutex<database::UsersTable>>) {
     let handle = bot.new_cmd("/lpstat").and_then(move |(bot, msg)| {
-        let users_table = a_users_table.lock().unwrap();
+        let users_table = { a_users_table.lock().unwrap().clone() };
         let admin = users_table.get_admin() as i64;
         let user_id = match msg.from {
             Some(data) => data.id,
@@ -425,7 +424,7 @@ fn cmd_lpstat(bot: &RcBot, a_users_table: Arc<Mutex<database::UsersTable>>) {
 
 fn cmd_cancel(bot: &RcBot, a_users_table: Arc<Mutex<database::UsersTable>>) {
     let handle = bot.new_cmd("/cancel").and_then(move |(bot, msg)| {
-        let users_table = a_users_table.lock().unwrap();
+        let users_table = { a_users_table.lock().unwrap().clone() };
         let admin = users_table.get_admin() as i64;
         let user_id = match msg.from {
             Some(data) => data.id,
@@ -459,6 +458,45 @@ fn cmd_cancel(bot: &RcBot, a_users_table: Arc<Mutex<database::UsersTable>>) {
 }
 
 
+fn cmd_help(bot: &RcBot, a_users_table: Arc<Mutex<database::UsersTable>>) {
+    let handle = bot.new_cmd("/help").and_then(move |(bot, msg)| {
+        let users_table = { a_users_table.lock().unwrap().clone() };
+        let admin = users_table.get_admin() as i64;
+        let user_id = match msg.from {
+            Some(data) => data.id,
+            None => return bot.message(admin, "Some error with user_id".to_string()).send(),
+        };
+
+        let helper = "
+Use the commands below to manage users, tokens, files and printer:
+* `/adduser <user_id>` -  add user to the access list
+* `/addtoken <token>` - add token to the access list
+* `/gentoken <name>` - generate token
+* `/deluser <user_id>` - delete user from the access list
+* `/deltoken <token>` - delete token from the access list
+* `/print <filename>` - print the file
+* `/users` - get users list
+* `/tokens` - get tokens list
+* `/files` - get files list
+* `/getfile <filename>` - get file
+* `/delfile <filename>` - delete file
+* `/lpstat` - see lpstat output
+* `/cancel <job ID or name>` - cancel the job
+* `/help` - print the list of commands above";
+
+        if user_id == admin {
+            bot.message(admin, helper.to_string()).send()
+        } else if users_table.check_user(user_id) {
+            bot.message(user_id, "Just send PDF file".to_string()).send()
+        } else {
+            bot.message(user_id, "You must authenticate by `/auth` command.".to_string()).send()
+        }
+    });
+
+    bot.register(handle);
+}
+
+
 /// Sends message
 ///
 /// Needs Telegram Bot API token, chat_id and text
@@ -469,7 +507,13 @@ fn cmd_cancel(bot: &RcBot, a_users_table: Arc<Mutex<database::UsersTable>>) {
 /// send_message(&bot_token, admin, &format!("Mail user {} wants to print:", user_token)).unwrap();
 /// ```
 pub fn send_message(token: &String, chat_id: i64, text: &String) -> Result<(), String> {
-    let mut url = reqwest::Url::parse(&format!("https://api.telegram.org/bot{}/sendMessage", token)).unwrap();
+    let mut url = match reqwest::Url::parse(&format!("https://api.telegram.org/bot{}/sendMessage", token)) {
+        Ok(data) => data,
+        Err(err) => {
+            eprintln!("{:?}", err);
+            return Err(format!("{:?}", err));
+        }
+    };
     url.query_pairs_mut().append_pair("chat_id", format!("{}", chat_id).as_str()).append_pair("text", text.as_str());
     let response = reqwest::get(url.as_str());
     println!("{:?}", response);
@@ -489,11 +533,22 @@ pub fn send_message(token: &String, chat_id: i64, text: &String) -> Result<(), S
 /// send_document(&bot_token, admin, &format!("{}", filename)).unwrap();
 /// ```
 pub fn send_document(token: &String, chat_id: i64, filename: &String) -> Result<(), String> {
-    let mut url = reqwest::Url::parse(&format!("https://api.telegram.org/bot{}/sendDocument", token)).unwrap();
-    //let file = File::open(filename).unwrap();
+    let mut url = match reqwest::Url::parse(&format!("https://api.telegram.org/bot{}/sendDocument", token)) {
+        Ok(data) => data,
+        Err(err) => {
+            eprintln!("{:?}", err);
+            return Err(format!("{:?}", err));
+        }
+    };
     let client = reqwest::Client::new();
 
-    let form = reqwest::multipart::Form::new().file("document", filename).unwrap();
+    let form = match reqwest::multipart::Form::new().file("document", filename) {
+        Ok(data) => data,
+        Err(err) => {
+            eprintln!("{:?}", err);
+            return Err(format!("{:?}", err));
+        }
+    };
 
     url.query_pairs_mut().append_pair("chat_id", format!("{}", chat_id).as_str());
 
@@ -509,7 +564,13 @@ pub fn send_document(token: &String, chat_id: i64, filename: &String) -> Result<
 
 
 fn get_link(token: &String, file_id: String) -> Result<String, String> {
-    let mut url = reqwest::Url::parse(&format!("https://api.telegram.org/bot{}/getFile", token)).unwrap();
+    let mut url = match reqwest::Url::parse(&format!("https://api.telegram.org/bot{}/getFile", token)) {
+        Ok(data) => data,
+        Err(err) => {
+            eprintln!("{:?}", err);
+            return Err(format!("{:?}", err));
+        }
+    };
     url.query_pairs_mut().append_pair("file_id", file_id.as_str());
     let response = reqwest::get(url.as_str());
     println!("{:?}", response);
@@ -558,6 +619,7 @@ pub fn run_bot(a_config: Arc<Mutex<config::Config>>, a_users_table: Arc<Mutex<da
     cmd_delete_file(&bot, Arc::clone(&a_users_table)); //   /delfile
     cmd_lpstat(&bot, Arc::clone(&a_users_table)); //        /lpstat
     cmd_cancel(&bot, Arc::clone(&a_users_table)); //        /cancel
+    cmd_help(&bot, Arc::clone(&a_users_table)); //          /help
     // cmd_from_file(&bot);
 
     let handle = (&bot).get_stream().and_then(|(bot, upd)| {
