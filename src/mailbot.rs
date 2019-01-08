@@ -14,7 +14,6 @@ use database;
 use hash;
 use io_tools;
 
-//use self::imap::types::{Fetch, ZeroCopy};
 use self::native_tls::{TlsConnector, TlsStream};
 
 #[derive(Debug)]
@@ -30,6 +29,20 @@ struct ProccessedMessage {
     filename: Option<String>,
 }
 
+#[derive(Debug, PartialEq)]
+enum SelectError {
+    BrokenPipe,
+    Other,
+}
+
+#[derive(Debug, PartialEq)]
+enum GetLatestError {
+    Select(SelectError),
+    Search,
+    Fetch,
+    Store,
+}
+
 fn vectorize(data: Option<&[u8]>) -> Option<Vec<u8>> {
     match data {
         Some(d) => Some(Vec::from(d)),
@@ -37,20 +50,20 @@ fn vectorize(data: Option<&[u8]>) -> Option<Vec<u8>> {
     }
 }
 
-fn get_latest(session: &mut imap::Session<TlsStream<TcpStream>>) -> Result<Vec<Message>, String> {
+fn get_latest(session: &mut imap::Session<TlsStream<TcpStream>>) -> Result<Vec<Message>, GetLatestError> {
     let mut messages: Vec<Message> = vec![];
     match session.select("INBOX") {
         Ok(_) => (),
         Err(err) => {
-            eprintln!("Error on selecting INBOX{:?}", err);
-            return Err(format!("{:?}", err));
+            eprintln!("Error on selecting INBOX: {:?}", err);
+            return Err(GetLatestError::Select(SelectError::BrokenPipe));
         }
     };
     let news = match session.search("UNSEEN") {
         Ok(data) => data,
         Err(err) => {
             eprintln!("Error on getting latest messages: {:?}", err);
-            return Err(format!("{:?}", err));
+            return Err(GetLatestError::Search);
         }
     };
 
@@ -232,12 +245,22 @@ pub fn run_bot(config: Arc<Mutex<Config>>, users_table: Arc<Mutex<database::User
     };
     println!("Session ok");
 
-    loop {
+    'main_loop: loop {
         let buff = match get_latest(&mut session) {
             Ok(data) => data,
             Err(err) => {
                 eprintln!("Get latest error: {:?}", err);
-                continue;
+                if err == GetLatestError::Select(SelectError::BrokenPipe) {
+                    session = match init(&config) {
+                        Ok(data) => data,
+                        Err(err) => {
+                            eprintln!("IMAP init error: {:?}", err);
+                            continue 'main_loop;
+                        }
+                    };
+                    println!("Session ok");
+                }
+                continue 'main_loop;
             }
         };
         for x in buff {
