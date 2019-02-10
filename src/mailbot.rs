@@ -32,15 +32,15 @@ struct ProccessedMessage {
 #[derive(Debug, PartialEq)]
 enum SelectError {
     BrokenPipe,
-    Other,
+    //Other,
 }
 
 #[derive(Debug, PartialEq)]
 enum GetLatestError {
     Select(SelectError),
     Search,
-    Fetch,
-    Store,
+    //Fetch,
+    //Store,
 }
 
 fn vectorize(data: Option<&[u8]>) -> Option<Vec<u8>> {
@@ -236,6 +236,10 @@ fn react(message: ProccessedMessage, a_config: Arc<Mutex<Config>>, a_users_table
 ///  });
 /// ```
 pub fn run_bot(config: Arc<Mutex<Config>>, users_table: Arc<Mutex<database::UsersTable>>) {
+    if {config.lock().unwrap()}.imap.server == "NONE".to_string() {
+        return;
+    }
+
     let mut session = match init(&config) {
         Ok(data) => data,
         Err(err) => {
