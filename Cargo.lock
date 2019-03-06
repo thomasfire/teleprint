@@ -1127,7 +1127,7 @@ dependencies = [
 
 [[package]]
 name = "teleprint"
-version = "0.1.1"
+version = "0.1.2"
 dependencies = [
  "futures 0.1.25 (registry+https://github.com/rust-lang/crates.io-index)",
  "imap 0.9.5 (registry+https://github.com/rust-lang/crates.io-index)",

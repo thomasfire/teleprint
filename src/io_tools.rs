@@ -1,7 +1,7 @@
 use std::io;
 use std::io::prelude::*;
 use std::io::Read;
-use std::fs::{read_dir, File};
+use std::fs::{File};
 use std::path::Path;
 
 /// Reads filename and returns String
@@ -70,29 +70,3 @@ pub fn write_bytes_to_file(path: &str, content: Vec<u8>) -> Result<usize, io::Er
     file.write(&content)
 }
 
-/// Returns only *.ovpn files of directory
-///
-/// # Examples
-///
-/// ```rust
-/// let ovpn_files: Vec<&str> = get_ovpn_files("path/to/dir");
-/// ```
-pub fn get_ovpn_files(path: &str) -> Vec<String> {
-    if !exists(path) {
-        return vec![];
-    }
-    let entries = read_dir(path).unwrap();
-    let mut files: Vec<String> = vec![];
-    for entry in entries {
-        let smentry = entry.unwrap().path();
-        let en_path = smentry.extension();
-        if en_path == None {
-            continue;
-        }
-        if smentry.is_file() && en_path.unwrap() == "ovpn" {
-            files.push(String::from(smentry.file_name().unwrap().to_str().unwrap()));
-        }
-    }
-
-    files
-}

@@ -1,7 +1,8 @@
 use std::fs::{read_dir, remove_file};
 use std::process::Command;
+use std::sync::{Arc, Mutex};
 
-use config::read_config;
+use config;
 
 /// Deletes file by filename
 pub fn delete_file(filename: &str) -> Result<String, String> {
@@ -13,11 +14,8 @@ pub fn delete_file(filename: &str) -> Result<String, String> {
 
 
 /// Prints file by filename via lp (on *nix only)
-pub fn print_from_file(filename: &str) -> Result<String, String> {
-    let config = match read_config() {
-        Ok(data) => data,
-        Err(err) => return Err(format!("Error reading the config: {}", err)),
-    };
+pub fn print_from_file(filename: &str, a_config: Arc<Mutex<config::Config>>) -> Result<String, String> {
+    let config = { a_config.lock().unwrap().clone() };
 
     let _printing_process = match Command::new("lp")
         .args(&["-d", &config.printer, filename]).spawn() {
@@ -74,10 +72,11 @@ pub fn get_files() -> Result<String, String> {
     for entry in entries {
         match entry {
             Ok(data) => {
-                if match data.path().extension() {
+                let extension = match data.path().extension() {
                     Some(path) => String::from(path.to_string_lossy()),
                     None => "".to_string()
-                } == "pdf".to_string() {
+                };
+                if extension == "pdf".to_string() || extension.trim().parse::<i64>().is_ok() {
                     v_entries.push(String::from(data.file_name().to_string_lossy()));
                 }
             }

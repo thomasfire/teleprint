@@ -48,6 +48,11 @@ Just run it:
 $ ./teleprint
 ```
 
+Or, if you don't want to use IMAP:
+```bash
+$ ./teleprint --noimap
+```
+
 If no errors appear, bots are started. Now you can use it.
 
 Users can only use `/auth` command and send files if they are authorized. After they 

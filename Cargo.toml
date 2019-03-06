@@ -1,6 +1,6 @@
 [package]
 name = "teleprint"
-version = "0.1.1"
+version = "0.1.2"
 authors = ["thomasfire <thomasfire@yandex.ru>"]
 
 [dependencies]

@@ -4,6 +4,7 @@ extern crate telebot;
 extern crate tokio_core;
 
 use std::sync::{Arc, Mutex};
+use std::thread;
 
 use config;
 use database;
@@ -268,9 +269,10 @@ fn cmd_tokens(bot: &RcBot, a_users_table: Arc<Mutex<database::UsersTable>>) {
 }
 
 
-fn cmd_print(bot: &RcBot, a_users_table: Arc<Mutex<database::UsersTable>>) {
+fn cmd_print(bot: &RcBot, a_users_table: Arc<Mutex<database::UsersTable>>, a_config: Arc<Mutex<config::Config>>) {
     let handle = bot.new_cmd("/print").and_then(move |(bot, msg)| {
         let users_table = { a_users_table.lock().unwrap().clone() };
+        let config = { a_config.lock().unwrap().clone() };
         let admin = users_table.get_admin() as i64;
         let user_id = match msg.from {
             Some(data) => data.id,
@@ -293,9 +295,26 @@ fn cmd_print(bot: &RcBot, a_users_table: Arc<Mutex<database::UsersTable>>) {
             None => return bot.message(admin, "No filename was specified. Error".to_string()).send()
         };
 
-        match printer::print_from_file(&filename) {
+        let file_parts: Vec<&str> = filename.split(".").collect();
+        let mut sender: Option<i64> = None;
+        if file_parts.len() > 1 {
+            match file_parts[1].trim().parse::<i64>() {
+                Ok(v) => sender = Some(v),
+                Err(_) => sender = None,
+            }
+        }
+
+
+        match printer::print_from_file(&filename, Arc::clone(&a_config)) {
             Ok(_state) => {
-                return bot.message(admin, "The file was printed and cleaned successfully.".to_string()).send();
+                match sender {
+                    Some(se) => {thread::spawn(move || {
+                        send_message(&config.token, se,
+                                     &"Your file has been started printing".to_string())
+                    });},
+                    None => {println!("No sender");},
+                };
+                return bot.message(admin, "The file has been started printing...".to_string()).send();
             }
             Err(err) => return bot.message(admin, format!("Error on printing the file: {}", err)).send()
         }
@@ -611,7 +630,8 @@ pub fn run_bot(a_config: Arc<Mutex<config::Config>>, a_users_table: Arc<Mutex<da
     cmd_gen_token(&bot, Arc::clone(&a_users_table)); //     /gentoken
     cmd_del_user(&bot, Arc::clone(&a_users_table)); //      /deluser
     cmd_del_token(&bot, Arc::clone(&a_users_table)); //     /deltoken
-    cmd_print(&bot, Arc::clone(&a_users_table)); //         /print
+    cmd_print(&bot, Arc::clone(&a_users_table),
+              Arc::clone(&a_config));                //         /print
     cmd_users(&bot, Arc::clone(&a_users_table)); //         /users
     cmd_tokens(&bot, Arc::clone(&a_users_table)); //        /tokens
     cmd_files(&bot, Arc::clone(&a_users_table)); //         /files
@@ -654,7 +674,7 @@ pub fn run_bot(a_config: Arc<Mutex<config::Config>>, a_users_table: Arc<Mutex<da
         };
 
 
-        let filename = match downloader::download_from_url(&format!("https://api.telegram.org/file/bot{}/{}", tg_token, link)) {
+        let filename = match downloader::download_from_url(&format!("https://api.telegram.org/file/bot{}/{}", tg_token, link), Some(user_id)) {
             Ok(data) => data,
             Err(err) => return Some(bot.message(admin, format!("Error in downloading file: {:?}", err)).send()),
         };
