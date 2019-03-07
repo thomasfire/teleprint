@@ -35,7 +35,7 @@ pub fn download_from_url(url: &str, user_id: Option<i64>) -> Result<String, Stri
     };
     let hashsum = hash::hash_data(&content);
 
-    let filename = format!("{}.{}", hashsum, extension);
+    let filename = format!("{}.{}.pdf", hashsum, extension);
 
     match write_bytes_to_file(&filename, content) {
         Ok(_) => Ok(filename.clone()),
