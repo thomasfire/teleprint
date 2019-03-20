@@ -1,7 +1,14 @@
 extern crate reqwest;
+extern crate thread_tryjoin;
 
 use std::io::Read;
-use::io_tools::write_bytes_to_file;
+use std::sync::{Arc, Mutex};
+use std::thread;
+use std::time::Duration;
+
+use self::thread_tryjoin::TryJoinHandle;
+
+use io_tools::write_bytes_to_file;
 use hash;
 
 /// Downloads (pdf) file from url, returns filename if Ok().
@@ -18,29 +25,41 @@ use hash;
 /// };
 /// ```
 pub fn download_from_url(url: &str, user_id: Option<i64>) -> Result<String, String> {
-    let mut resp = match reqwest::get(url) {
-        Ok(data) => data,
-        Err(err) => return Err(format!("{:?}", err)),
-    };
+    let content = Arc::new(Mutex::new(Vec::new()));
 
     let extension = match user_id {
         Some(v) => format!("{}", v),
         None => "pdf".to_string(),
     };
 
-    let mut content: Vec<u8> = Vec::new();
-    match resp.read_to_end(&mut content) {
-        Ok(_) => println!("Downloaded file"),
-        Err(err) => return Err(format!("Error on downloading to file: {}", err))
-    };
-    let hashsum = hash::hash_data(&content);
+    let url_copy = url.to_string();
+    let content_a = Arc::clone(&content);
+
+    let downloader = thread::spawn(move || {
+        let mut resp = match reqwest::get(&url_copy) {
+            Ok(data) => data,
+            Err(err) => return Err(format!("{:?}", err)),
+        };
+
+        match resp.read_to_end(&mut content_a.lock().unwrap()) {
+            Ok(_) => println!("Downloaded file"),
+            Err(err) => return Err(format!("Error on downloading to file: {}", err))
+        };
+        Ok("Ok downloaded")
+    });
+
+    if downloader.try_timed_join(Duration::from_secs(10)).is_err() {
+        return Err("Downloading is too slow, or there was an error".to_string());
+    }
+
+    let cont = content.lock().unwrap().clone();
+    let hashsum = hash::hash_data(&cont);
 
     let filename = format!("{}.{}.pdf", hashsum, extension);
 
-    match write_bytes_to_file(&filename, content) {
+    match write_bytes_to_file(&filename, cont) {
         Ok(_) => Ok(filename.clone()),
         Err(err) => Err(format!("Error on writing to file: {}", err)),
     }
-
 }
 
